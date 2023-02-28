@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using StudentAdminPortal.API.Domain_Models;
+using StudentAdminPortal.API.DomainModels;
 using StudentAdminPortal.API.Repositories;
 
 namespace StudentAdminPortal.API.Controllers
@@ -25,7 +26,7 @@ namespace StudentAdminPortal.API.Controllers
 
         [HttpGet]
         [Route("[controller]")]
-        public async Task<IActionResult> GetAllStudents()
+        public async Task<IActionResult> GetAllStudentsAsync()
         {
             //ok = because its a restful api
             var students = await studentRepository.GetStudentsAsync();
@@ -46,6 +47,22 @@ namespace StudentAdminPortal.API.Controllers
             }
 
             return Ok(mapper.Map<Student>(student));
+        }
+
+        [HttpPut]
+        [Route("[controller]/{studentId:guid}")]
+        public async Task<IActionResult> UpdateStudentAsync([FromRoute] Guid studentId, [FromBody] UpdateStudentRequest request)
+        {
+            if (await studentRepository.Exists(studentId))
+            {
+                var updatedStudent = await studentRepository.UpdateStudent(studentId, mapper.Map<DataModels.Student>(request));
+
+                if (updatedStudent != null)
+                {
+                    return Ok(mapper.Map<Student>(updatedStudent));
+                }
+            }
+            return NotFound();
         }
     }
 }
