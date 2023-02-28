@@ -14,6 +14,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.IO;
+using Microsoft.Extensions.FileProviders;
 
 namespace StudentAdminPortal.API
 {
@@ -41,6 +43,7 @@ namespace StudentAdminPortal.API
                 options.UseSqlServer(Configuration.GetConnectionString("StudentAdminPortalDb")));
 
             services.AddScoped<IStudentRepository, SqlStudentRepository>();
+            services.AddScoped<IImageRepository, LocalStorageImageRepository>();
 
             services.AddSwaggerGen(c =>
             {
@@ -60,6 +63,13 @@ namespace StudentAdminPortal.API
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "StudentAdminPortal.API v1"));
             }
             app.UseHttpsRedirection();
+
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = new PhysicalFileProvider(Path.Combine(env.ContentRootPath, "Resources")),
+                RequestPath = "/Resources"
+            });
+
             app.UseRouting();
             app.UseCors("angularApplication");
             app.UseAuthorization();

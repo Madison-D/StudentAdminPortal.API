@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using AutoMapper;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using StudentAdminPortal.API.Domain_Models;
 using StudentAdminPortal.API.DomainModels;
 using StudentAdminPortal.API.Repositories;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace StudentAdminPortal.API.Controllers
 {
@@ -16,12 +17,14 @@ namespace StudentAdminPortal.API.Controllers
     {
         private readonly IStudentRepository studentRepository;
         private readonly IMapper mapper;
+        private readonly IImageRepository imageRepository;
 
         //inject
-        public StudentsController(IStudentRepository studentRepository, IMapper mapper)
+        public StudentsController(IStudentRepository studentRepository, IMapper mapper, IImageRepository imageRepository)
         {
             this.studentRepository = studentRepository;
             this.mapper = mapper;
+            this.imageRepository = imageRepository;
         }
 
         [HttpGet]
@@ -69,7 +72,8 @@ namespace StudentAdminPortal.API.Controllers
         [Route("[controller]/{studentId:guid}")]
         public async Task<IActionResult> DeleteStudentAsync([FromRoute] Guid studentId)
         {
-            if(await studentRepository.Exists(studentId)){
+            if (await studentRepository.Exists(studentId))
+            {
                 //delete
                 var student = await studentRepository.DeleteStudent(studentId);
                 return Ok(mapper.Map<Student>(student));
@@ -84,6 +88,29 @@ namespace StudentAdminPortal.API.Controllers
         {
             var student = await studentRepository.AddStudent(mapper.Map<DataModels.Student>(request));
             return CreatedAtAction(nameof(GetStudentAsync), new { studentId = student.Id }, mapper.Map<Student>(student));
+        }
+
+        [HttpPost]
+        [Route("[controller]/{studentId:guid}/upload-image")]
+        public async Task<IActionResult> UploadImage([FromRoute] Guid studentId, IFormFile profileImage)
+        {
+            //does this student exits?
+            if (await studentRepository.Exists(studentId))
+            {
+                var fileName = Guid.NewGuid() + Path.GetExtension(profileImage.FileName);
+                //upload image to local storage
+                var fileImagePath = await imageRepository.Upload(profileImage, fileName);
+                //update the profile image path
+                if (await studentRepository.UpdateProfileImage(studentId, fileImagePath))
+                {
+                    return Ok(fileImagePath);
+                }
+
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error uploading image");
+            }
+
+            return NotFound();
+
         }
     }
 }
